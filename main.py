@@ -198,7 +198,6 @@ class Bot:
         return user_info
 
     def get_user_photo(self, user_id):
-        time.sleep(3)
 
         top_photo = {}
 
@@ -215,13 +214,23 @@ class Bot:
         res = res.json()
         photo_info = res['response']['items']
         for photo in photo_info:
-            top_photo[photo['sizes'][-1]['url']] = photo['likes']['count']
+            top_photo[photo['id']] = photo['likes']['count']
         inverse = [(meaning, social) for social, meaning in top_photo.items()]
         sorted_top_photos = sorted(inverse, reverse=True)
         top = sorted_top_photos[0:3]
         people_photo_url.clear()
         for photos in top:
             people_photo_url.append(photos[1])
+
+    def message_send_attach(self, user_id, owner_id, media_id):
+
+        message_send_attach_url = self.url + 'messages.send'
+        message_send_attach_params = {
+            'user_id': user_id,
+            'random_id': randrange(10 ** 7),
+            'attachment': f'photo{owner_id}_{media_id}'
+        }
+        requests.get(message_send_attach_url, params={**self.params, **message_send_attach_params})
 
 
 bot_vk = Bot(vk_token, '5.126')
@@ -230,6 +239,11 @@ bot_vk = Bot(vk_token, '5.126')
 def write_msg(user_id, message):
 
     vk.method('messages.send', {'user_id': user_id, 'message': message, 'random_id': randrange(10 ** 7)})
+
+
+def write_msg_attach(user_id, message):
+
+    vk.method('messages.send', {'user_id': user_id, 'attachment': message, 'random_id': randrange(10 ** 7)})
 
 
 def checking_exciting_table_bd_user_search(user_id):
@@ -297,7 +311,8 @@ def fast_searching_not_exists():
     if bot_vk.user_closed_open(people_ids_not_exist_in_bd) is False:
         bot_vk.get_user_photo(people_ids_not_exist_in_bd)
         for each_photo in people_photo_url:
-            write_msg(searching_params['user_id_answer'], f'{each_photo}')
+            photo_attach = f'photo{people_ids_not_exist_in_bd}_{each_photo}'
+            write_msg_attach(searching_params['user_id_answer'], photo_attach)
         write_msg(searching_params['user_id_answer'], f'https://vk.com/id{people_ids_not_exist_in_bd}')
     elif bot_vk.user_closed_open(people_ids_not_exist_in_bd) is True:
         write_msg(searching_params['user_id_answer'], f'vk.com/id{people_ids_not_exist_in_bd}, '
@@ -331,7 +346,8 @@ def detail_searching_not_exists():
     if bot_vk.user_closed_open(people_ids_not_exist_in_bd) is False:
         bot_vk.get_user_photo(people_ids_not_exist_in_bd)
         for each_photo in people_photo_url:
-            write_msg(searching_params['user_id_answer'], f'{each_photo}')
+            photo_attach = f'photo{people_ids_not_exist_in_bd}_{each_photo}'
+            write_msg_attach(searching_params['user_id_answer'], photo_attach)
         write_msg(searching_params['user_id_answer'], f'https://vk.com/id{people_ids_not_exist_in_bd}')
     elif bot_vk.user_closed_open(people_ids_not_exist_in_bd) is True:
         write_msg(searching_params['user_id_answer'], f'vk.com/id{people_ids_not_exist_in_bd}, '
@@ -383,6 +399,7 @@ def listen():
         if event.type == VkEventType.MESSAGE_NEW:
             if event.to_me:
                 return event.text
+
 
 vk = vk_api.VkApi(token=group_token)
 longpoll = VkLongPoll(vk)

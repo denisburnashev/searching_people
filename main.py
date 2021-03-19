@@ -490,10 +490,10 @@ for event in longpoll.listen():
                                                              f'а если ты хочешь найти для друга введи - для друга')
                                     break
                                 elif request == 'еще':
-                                    check_list = checking_exciting_in_table_vk_user_fast_search(
+                                    check_list = checking_exciting_in_table_vk_user_detail_search(
                                         searching_params['user_id'])
                                     searching_params['offset'] += len(check_list)
-                                    fast_searching_not_exists()
+                                    detail_searching_not_exists()
                                 else:
                                     write_msg(event.user_id, f'Не знаю такой комманды')
             elif request == 'Женского' or request == 'женского':
@@ -531,10 +531,10 @@ for event in longpoll.listen():
                                                              f'а если ты хочешь найти для друга введи - для друга')
                                     break
                                 elif request == 'еще':
-                                    check_list = checking_exciting_in_table_vk_user_fast_search(
+                                    check_list = checking_exciting_in_table_vk_user_detail_search(
                                         searching_params['user_id'])
                                     searching_params['offset'] += len(check_list)
-                                    fast_searching_not_exists()
+                                    detail_searching_not_exists()
                                 else:
                                     write_msg(event.user_id, f'Не знаю такой комманды')
             elif request == 'Не имеет значения' or request == 'не имеет значения':
@@ -572,10 +572,10 @@ for event in longpoll.listen():
                                                              f'а если ты хочешь найти для друга введи - для друга')
                                     break
                                 elif request == 'еще':
-                                    check_list = checking_exciting_in_table_vk_user_fast_search(
+                                    check_list = checking_exciting_in_table_vk_user_detail_search(
                                         searching_params['user_id'])
                                     searching_params['offset'] += len(check_list)
-                                    fast_searching_not_exists()
+                                    detail_searching_not_exists()
                                 else:
                                     write_msg(event.user_id, f'Не знаю такой комманды')
             else:

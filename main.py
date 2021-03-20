@@ -25,10 +25,12 @@ with open('dbname.txt', 'r') as file_object:
 engine = sqlalchemy.create_engine(f'postgresql://{bd_user}:{bd_password}@localhost:5432/{bd_name}')
 connection = engine.connect()
 
-searching_params = {}
 main_info = {}
+people_found_info = {}
+result = {}
 people_ids = []
 people_photo_url = []
+searching_params = {}
 
 
 class Bot:
@@ -68,6 +70,19 @@ class Bot:
             main_info['city_id'] = None
         else:
             main_info['city_id'] = info['city']['id']
+
+    def main_info_people_found(self, user_id):
+        time.sleep(1)
+
+        main_info_people_found_url = self.url + 'users.get'
+        main_info_people_found_params = {
+            'users_ids': user_id
+        }
+        res = requests.get(main_info_people_found_url, params={**self.params, **main_info_people_found_params})
+        res = res.json()
+        info = res['response'][0]
+        people_found_info['first_name'] = info['first_name']
+        people_found_info['last_name'] = info['last_name']
 
     def get_user_age(self, user_id):
         time.sleep(1)
@@ -121,12 +136,13 @@ class Bot:
         res = res.json()
         return res['response'][0]['is_closed']
 
-    def user_search_optimal_settings(self, offset, city_id, sex, age_from, age_to):
-        time.sleep(1)
+    def user_search_optimal_settings(self, city_id, sex, age_from, age_to):
+        random_people = randrange(1, 1000)
+        searching_params['offset'] = random_people
 
         user_search_optimal_settings_url = self.url + 'users.search'
         user_search_optimal_settings_params = {
-            'offset': offset,
+            'offset': searching_params['offset'],
             'count': 1,
             'city': city_id,
             'sex': sex,
@@ -134,37 +150,27 @@ class Bot:
             'age_from': age_from,
             'age_to': age_to
         }
+        time.sleep(1)
         res = requests.get(user_search_optimal_settings_url, params={
             **self.params,
             **user_search_optimal_settings_params
         })
         res = res.json()
+        print(res)
         user_info = res['response']['items']
-        while len(user_info) == 0:
-            user_search_optimal_settings_params = {
-                'offset': offset,
-                'count': 1,
-                'city': city_id,
-                'sex': sex,
-                'status': 6,
-                'age_from': age_from,
-                'age_to': age_to
-            }
-            res = requests.get(user_search_optimal_settings_url, params={
-                **self.params,
-                **user_search_optimal_settings_params
-            })
-            res = res.json()
-            user_info = res['response']['items']
-        user_info = user_info[0]['id']
-        return user_info
+        if len(user_info) == 0:
+            return False
+        else:
+            result['user_result'] = user_info[0]['id']
+            return True
 
-    def user_search_you_setting(self, offset, city_id, sex, age_from, age_to):
-        time.sleep(1)
+    def user_search_you_setting(self, city_id, sex, age_from, age_to):
+        random_people = randrange(1, 1000)
+        searching_params['offset'] = random_people
 
         user_search_you_setting_url = self.url + 'users.search'
         user_search_you_setting_params = {
-            'offset': offset,
+            'offset': searching_params['offset'],
             'count': 1,
             'city': city_id,
             'sex': sex,
@@ -172,30 +178,19 @@ class Bot:
             'age_from': age_from,
             'age_to': age_to
         }
+        time.sleep(1)
         res = requests.get(user_search_you_setting_url, params={
             **self.params,
             **user_search_you_setting_params
         })
         res = res.json()
+        print(res)
         user_info = res['response']['items']
-        while len(user_info) == 0:
-            user_search_you_setting_params = {
-                'offset': offset,
-                'count': 1,
-                'city': city_id,
-                'sex': sex,
-                'status': 6,
-                'age_from': age_from,
-                'age_to': age_to
-            }
-            res = requests.get(user_search_you_setting_url, params={
-                **self.params,
-                **user_search_you_setting_params
-            })
-            res = res.json()
-            user_info = res['response']['items']
-        user_info = user_info[0]['id']
-        return user_info
+        if len(user_info) == 0:
+            return False
+        else:
+            result['user_result'] = user_info[0]['id']
+            return True
 
     def get_user_photo(self, user_id):
 
@@ -290,72 +285,65 @@ def fast_searching_exists(user_id):
             main_info['age_to'] is None:
         return False
     else:
-        searching_params['offset'] = 0
-        list_for_checking = checking_exciting_in_table_vk_user_fast_search(user_id)
-        if bot_vk.user_search_optimal_settings(
-                searching_params['offset'],
-                main_info['city_id'], main_info['sex'],
-                main_info['age_from'], main_info['age_to']) in list_for_checking:
-            pass
         return True
 
 
 def fast_searching_not_exists():
 
-    people_ids_not_exist_in_bd = bot_vk.user_search_optimal_settings(
-        searching_params['offset'],
-        main_info['city_id'],
-        main_info['sex'],
-        main_info['age_from'],
-        main_info['age_to'])
-    if bot_vk.user_closed_open(people_ids_not_exist_in_bd) is False:
-        bot_vk.get_user_photo(people_ids_not_exist_in_bd)
-        for each_photo in people_photo_url:
-            photo_attach = f'photo{people_ids_not_exist_in_bd}_{each_photo}'
-            write_msg_attach(searching_params['user_id_answer'], photo_attach)
-        write_msg(searching_params['user_id_answer'], f'https://vk.com/id{people_ids_not_exist_in_bd}')
-    elif bot_vk.user_closed_open(people_ids_not_exist_in_bd) is True:
-        write_msg(searching_params['user_id_answer'], f'vk.com/id{people_ids_not_exist_in_bd}, '
-                                                      f'к сожелению это закрытый профиль '
-                                                      f'и я не могу отправить тебе его или ее фото.')
-    add_info_in_vk_user_fast_search(people_ids_not_exist_in_bd)
-    write_msg(event.user_id, 'Если хочешь просмотреть следующий результат просто введи еще.\n'
-                             'Если хочешь вернуться к началу просто введи начало')
-
-
-def detail_searching_exists(user_id):
-
-    searching_params['offset'] = 0
-    list_for_checking = checking_exciting_in_table_vk_user_detail_search(user_id)
-    if bot_vk.user_search_you_setting(searching_params['offset'],
-                                      searching_params['city_id'],
-                                      searching_params['sex'],
-                                      searching_params['age_from'],
-                                      searching_params['age_to']) in list_for_checking:
-        pass
-    return True
+    check_list_not_exists = checking_exciting_in_table_vk_user_fast_search(searching_params['user_id'])
+    while bot_vk.user_search_optimal_settings(main_info['city_id'], main_info['sex'], main_info['age_from'],
+                                              main_info['age_to']) is False:
+        print('---------------')
+        print('продолжаем поиск')
+        print('---------------')
+    people_ids_not_exist_in_bd = result['user_result']
+    if people_ids_not_exist_in_bd not in check_list_not_exists:
+        if bot_vk.user_closed_open(people_ids_not_exist_in_bd) is False:
+            bot_vk.get_user_photo(people_ids_not_exist_in_bd)
+            for each_photo in people_photo_url:
+                photo_attach = f'photo{people_ids_not_exist_in_bd}_{each_photo}'
+                write_msg_attach(searching_params['user_id_answer'], photo_attach)
+            write_msg(searching_params['user_id_answer'], f'https://vk.com/id{people_ids_not_exist_in_bd}')
+        elif bot_vk.user_closed_open(people_ids_not_exist_in_bd) is True:
+            write_msg(searching_params['user_id_answer'], f'vk.com/id{people_ids_not_exist_in_bd}, '
+                                                          f'к сожелению это закрытый профиль '
+                                                          f'и я не могу отправить тебе его или ее фото.')
+        add_info_in_vk_user_fast_search(people_ids_not_exist_in_bd)
+        write_msg(event.user_id, 'Если хочешь просмотреть следующий результат просто введи еще.\n'
+                                 'Если хочешь вернуться к началу просто введи начало')
+        return True
+    else:
+        return False
 
 
 def detail_searching_not_exists():
 
-    people_ids_not_exist_in_bd = bot_vk.user_search_you_setting(searching_params['offset'],
-                                                                searching_params['city_id'],
-                                                                searching_params['sex'],
-                                                                searching_params['age_from'],
-                                                                searching_params['age_to'])
-    if bot_vk.user_closed_open(people_ids_not_exist_in_bd) is False:
-        bot_vk.get_user_photo(people_ids_not_exist_in_bd)
-        for each_photo in people_photo_url:
-            photo_attach = f'photo{people_ids_not_exist_in_bd}_{each_photo}'
-            write_msg_attach(searching_params['user_id_answer'], photo_attach)
-        write_msg(searching_params['user_id_answer'], f'https://vk.com/id{people_ids_not_exist_in_bd}')
-    elif bot_vk.user_closed_open(people_ids_not_exist_in_bd) is True:
-        write_msg(searching_params['user_id_answer'], f'vk.com/id{people_ids_not_exist_in_bd}, '
-                                                      f'к сожелению это закрытый профиль '
-                                                      f'и я не могу отправить тебе его или ее фото.')
-    add_info_in_vk_user_detail_search(people_ids_not_exist_in_bd)
-    write_msg(event.user_id, 'Если хочешь просмотреть следующий результат просто введи еще.\n'
-                             'Если хочешь вернуться к началу просто введи начало')
+    check_list_not_exists = checking_exciting_in_table_vk_user_detail_search(searching_params['user_id'])
+    while bot_vk.user_search_you_setting(searching_params['city_id'],
+                                         searching_params['sex'],
+                                         searching_params['age_from'],
+                                         searching_params['age_to']) is False:
+        print('---------------')
+        print('продолжаем поиск')
+        print('---------------')
+    people_ids_not_exist_in_bd = result['user_result']
+    if people_ids_not_exist_in_bd not in check_list_not_exists:
+        if bot_vk.user_closed_open(people_ids_not_exist_in_bd) is False:
+            bot_vk.get_user_photo(people_ids_not_exist_in_bd)
+            for each_photo in people_photo_url:
+                photo_attach = f'photo{people_ids_not_exist_in_bd}_{each_photo}'
+                write_msg_attach(searching_params['user_id_answer'], photo_attach)
+            write_msg(searching_params['user_id_answer'], f'https://vk.com/id{people_ids_not_exist_in_bd}')
+        elif bot_vk.user_closed_open(people_ids_not_exist_in_bd) is True:
+            write_msg(searching_params['user_id_answer'], f'vk.com/id{people_ids_not_exist_in_bd}, '
+                                                          f'к сожелению это закрытый профиль '
+                                                          f'и я не могу отправить тебе его или ее фото.')
+        add_info_in_vk_user_detail_search(people_ids_not_exist_in_bd)
+        write_msg(event.user_id, 'Если хочешь просмотреть следующий результат просто введи еще.\n'
+                                 'Если хочешь вернуться к началу просто введи начало')
+        return True
+    else:
+        return False
 
 
 def checking_exciting_in_table_vk_user_fast_search(user_id):
@@ -382,16 +370,16 @@ def checking_exciting_in_table_vk_user_detail_search(user_id):
 
 def add_info_in_vk_user_fast_search(user_id):
 
-    bot_vk.user_main_info(user_id)
+    bot_vk.main_info_people_found(user_id)
     connection.execute(
-        f"""INSERT INTO vk_user_fast_search (user_first_name, user_second_name, user_id, user_url, user_search_id) VALUES ('{main_info['first_name']}', '{main_info['last_name']}', '{user_id}', 'https://vk.com/id{user_id}', '{searching_params['user_id']}');""")
+        f"""INSERT INTO vk_user_fast_search (user_first_name, user_second_name, user_id, user_url, user_search_id) VALUES ('{people_found_info['first_name']}', '{people_found_info['last_name']}', '{user_id}', 'https://vk.com/id{user_id}', '{searching_params['user_id']}');""")
 
 
 def add_info_in_vk_user_detail_search(user_id):
 
-    bot_vk.user_main_info(user_id)
+    bot_vk.main_info_people_found(user_id)
     connection.execute(
-        f"""INSERT INTO vk_user_detail_search (user_first_name, user_second_name, user_id, user_url, user_search_id) VALUES ('{main_info['first_name']}', '{main_info['last_name']}', '{user_id}', 'https://vk.com/id{user_id}', '{searching_params['user_id']}');""")
+        f"""INSERT INTO vk_user_detail_search (user_first_name, user_second_name, user_id, user_url, user_search_id) VALUES ('{people_found_info['first_name']}', '{people_found_info['last_name']}', '{user_id}', 'https://vk.com/id{user_id}', '{searching_params['user_id']}');""")
 
 
 def listen():
@@ -399,6 +387,52 @@ def listen():
         if event.type == VkEventType.MESSAGE_NEW:
             if event.to_me:
                 return event.text
+
+
+def listen_for_sex():
+    answer = listen()
+    if answer == 'Мужского' or answer == 'мужского':
+        searching_params['sex'] = 2
+        write_msg(event.user_id, f'Отлично, тепрерь перейдем к городу, в каком городе ты хочешь найти людей?')
+        return True
+    elif answer == 'Женского' or answer == 'женского':
+        searching_params['sex'] = 1
+        write_msg(event.user_id, f'Отлично, тепрерь перейдем к городу, в каком городе ты хочешь найти людей?')
+        return True
+    elif answer == 'Не имеет значения' or answer == 'не имеет значения':
+        searching_params['sex'] = 0
+        write_msg(event.user_id, f'Отлично, тепрерь перейдем к городу, в каком городе ты хочешь найти людей?')
+        return True
+    else:
+        write_msg(event.user_id, f'Не понял, введите пол человека для того чтобы я Вам мог подобрать людей?')
+        return False
+
+
+def listen_for_city():
+    answer = listen()
+    searching_params['city_name'] = answer
+    searching_params['city_id'] = bot_vk.get_cities_id(answer)
+    if searching_params['city_id'] is None:
+        write_msg(event.user_id, f'Не знаю такого города')
+        return False
+    else:
+        write_msg(event.user_id, f'{answer}, красивый город, '
+                                 f'осталось лишь определиться с возрастным диапозоном поиска.\n'
+                                 f'Для начала укажи минимальны возраст '
+                                 f'с которого надо начать поиск.')
+        return True
+
+
+def listen_for_age_from():
+    answer = listen()
+    searching_params['age_from'] = answer
+    return write_msg(event.user_id, f'ну и на полследок укажи максимальный возраст.')
+
+
+def listen_for_age_to():
+    answer = listen()
+    searching_params['age_to'] = answer
+    return write_msg(event.user_id, f'Олично начинаем поиск.')
 
 
 vk = vk_api.VkApi(token=group_token)
@@ -421,7 +455,8 @@ for event in longpoll.listen():
                 write_msg(event.user_id, f'Отлично просто напиши мне id его аккаунта.')
                 request = listen()
                 searching_params['user_id_answer'] = event.user_id
-                checking_exciting_table_bd_user_search(int(request))
+                searching_params['user_id'] = int(request)
+                checking_exciting_table_bd_user_search(searching_params['user_id'])
             elif request == 'быстрый поиск':
                 bot_vk.user_main_info(searching_params['user_id'])
                 bot_vk.get_user_age(searching_params['user_id'])
@@ -429,9 +464,8 @@ for event in longpoll.listen():
                 if answer_for_exists is False:
                     write_msg(event.user_id, 'Часть информации отсутствует, рекомендую использовать детальный поиск.')
                 elif answer_for_exists is True:
-                    check_list = checking_exciting_in_table_vk_user_fast_search(searching_params['user_id'])
-                    searching_params['offset'] += len(check_list)
-                    fast_searching_not_exists()
+                    while fast_searching_not_exists() is False:
+                        pass
                     for event in longpoll.listen():
                         if event.type == VkEventType.MESSAGE_NEW:
                             if event.to_me:
@@ -443,10 +477,8 @@ for event in longpoll.listen():
                                                              f'а если ты хочешь найти для друга введи - для друга')
                                     break
                                 elif request == 'еще':
-                                    check_list = checking_exciting_in_table_vk_user_fast_search(
-                                        searching_params['user_id'])
-                                    searching_params['offset'] += len(check_list)
-                                    fast_searching_not_exists()
+                                    while fast_searching_not_exists() is False:
+                                        pass
                                 else:
                                     write_msg(event.user_id, f'Не знаю такой комманды')
             elif request == 'детальный поиск':
@@ -455,128 +487,28 @@ for event in longpoll.listen():
                                          f'Мужского\n'
                                          f'Женского\n'
                                          f'Не имеет значения')
-            elif request == 'Мужского' or request == 'мужского':
-                searching_params['sex'] = 2
-                write_msg(event.user_id, f'Отлично, тепрерь перейдем к городу, в каком городе ты хочешь найти людей?')
-                info_city_from_user = listen()
-                searching_params['city_id'] = bot_vk.get_cities_id(info_city_from_user)
-                if searching_params['city_id'] is None:
-                    write_msg(event.user_id, f'Не знаю такого города')
-                else:
-                    write_msg(event.user_id, f'{info_city_from_user}, красивый город, '
-                                             f'осталось лишь с возрастным диапозоном поиска.\n'
-                                             f'Для начала укажи минимальны возраст '
-                                             f'с которого надо начать поиск.')
-                info_age_from_user = listen()
-                searching_params['age_from'] = info_age_from_user
-                write_msg(event.user_id, f'ну и на полследок укажи максимальный возраст.')
-                info_age_to_user = listen()
-                searching_params['age_to'] = info_age_to_user
-                answer_for_exists = detail_searching_exists(
-                    searching_params['user_id'])
-                if answer_for_exists is True:
-                    check_list = checking_exciting_in_table_vk_user_detail_search(
-                        searching_params['user_id'])
-                    searching_params['offset'] += len(check_list)
-                    detail_searching_not_exists()
-                    for event in longpoll.listen():
-                        if event.type == VkEventType.MESSAGE_NEW:
-                            if event.to_me:
-                                request = event.text
-                                if request == 'начало':
-                                    write_msg(event.user_id, f'Привет это бот - vkinder по поиску людей.\n'
-                                                             f'Для кого ты хочешь найти подходящих людей?\n'
-                                                             f'если ты хочешь найти для себя просто напиши - для себя,\n '
-                                                             f'а если ты хочешь найти для друга введи - для друга')
-                                    break
-                                elif request == 'еще':
-                                    check_list = checking_exciting_in_table_vk_user_detail_search(
-                                        searching_params['user_id'])
-                                    searching_params['offset'] += len(check_list)
-                                    detail_searching_not_exists()
-                                else:
-                                    write_msg(event.user_id, f'Не знаю такой комманды')
-            elif request == 'Женского' or request == 'женского':
-                searching_params['sex'] = 1
-                write_msg(event.user_id, f'Отлично, тепрерь перейдем к городу, в каком городе ты хочешь найти людей?')
-                info_city_from_user = listen()
-                searching_params['city_id'] = bot_vk.get_cities_id(info_city_from_user)
-                if searching_params['city_id'] is None:
-                    write_msg(event.user_id, f'Не знаю такого города')
-                else:
-                    write_msg(event.user_id, f'{info_city_from_user}, красивый город, '
-                                             f'осталось лишь с возрастным диапозоном поиска.\n'
-                                             f'Для начала укажи минимальны возраст '
-                                             f'с которого надо начать поиск.')
-                info_age_from_user = listen()
-                searching_params['age_from'] = info_age_from_user
-                write_msg(event.user_id, f'ну и на полследок укажи максимальный возраст.')
-                info_age_to_user = listen()
-                searching_params['age_to'] = info_age_to_user
-                answer_for_exists = detail_searching_exists(
-                    searching_params['user_id'])
-                if answer_for_exists is True:
-                    check_list = checking_exciting_in_table_vk_user_detail_search(
-                        searching_params['user_id'])
-                    searching_params['offset'] += len(check_list)
-                    detail_searching_not_exists()
-                    for event in longpoll.listen():
-                        if event.type == VkEventType.MESSAGE_NEW:
-                            if event.to_me:
-                                request = event.text
-                                if request == 'начало':
-                                    write_msg(event.user_id, f'Привет это бот - vkinder по поиску людей.\n'
-                                                             f'Для кого ты хочешь найти подходящих людей?\n'
-                                                             f'если ты хочешь найти для себя просто напиши - для себя,\n '
-                                                             f'а если ты хочешь найти для друга введи - для друга')
-                                    break
-                                elif request == 'еще':
-                                    check_list = checking_exciting_in_table_vk_user_detail_search(
-                                        searching_params['user_id'])
-                                    searching_params['offset'] += len(check_list)
-                                    detail_searching_not_exists()
-                                else:
-                                    write_msg(event.user_id, f'Не знаю такой комманды')
-            elif request == 'Не имеет значения' or request == 'не имеет значения':
-                searching_params['sex'] = 0
-                write_msg(event.user_id, f'Отлично, тепрерь перейдем к городу, в каком городе ты хочешь найти людей?')
-                info_city_from_user = listen()
-                searching_params['city_id'] = bot_vk.get_cities_id(info_city_from_user)
-                if searching_params['city_id'] is None:
-                    write_msg(event.user_id, f'Не знаю такого города')
-                else:
-                    write_msg(event.user_id, f'{info_city_from_user}, красивый город, '
-                                             f'осталось лишь с возрастным диапозоном поиска.\n'
-                                             f'Для начала укажи минимальны возраст '
-                                             f'с которого надо начать поиск.')
-                info_age_from_user = listen()
-                searching_params['age_from'] = info_age_from_user
-                write_msg(event.user_id, f'ну и на полследок укажи максимальный возраст.')
-                info_age_to_user = listen()
-                searching_params['age_to'] = info_age_to_user
-                answer_for_exists = detail_searching_exists(
-                    searching_params['user_id'])
-                if answer_for_exists is True:
-                    check_list = checking_exciting_in_table_vk_user_detail_search(
-                        searching_params['user_id'])
-                    searching_params['offset'] += len(check_list)
-                    detail_searching_not_exists()
-                    for event in longpoll.listen():
-                        if event.type == VkEventType.MESSAGE_NEW:
-                            if event.to_me:
-                                request = event.text
-                                if request == 'начало':
-                                    write_msg(event.user_id, f'Привет это бот - vkinder по поиску людей.\n'
-                                                             f'Для кого ты хочешь найти подходящих людей?\n'
-                                                             f'если ты хочешь найти для себя просто напиши - для себя,\n '
-                                                             f'а если ты хочешь найти для друга введи - для друга')
-                                    break
-                                elif request == 'еще':
-                                    check_list = checking_exciting_in_table_vk_user_detail_search(
-                                        searching_params['user_id'])
-                                    searching_params['offset'] += len(check_list)
-                                    detail_searching_not_exists()
-                                else:
-                                    write_msg(event.user_id, f'Не знаю такой комманды')
+                while listen_for_sex() is False:
+                    pass
+                while listen_for_city() is False:
+                    pass
+                listen_for_age_from()
+                listen_for_age_to()
+                while detail_searching_not_exists() is False:
+                    pass
+                for event in longpoll.listen():
+                    if event.type == VkEventType.MESSAGE_NEW:
+                        if event.to_me:
+                            request = event.text
+                            if request == 'начало':
+                                write_msg(event.user_id, f'Привет это бот - vkinder по поиску людей.\n'
+                                                         f'Для кого ты хочешь найти подходящих людей?\n'
+                                                         f'если ты хочешь найти для себя просто напиши - для себя,\n '
+                                                         f'а если ты хочешь найти для друга введи - для друга')
+                                break
+                            elif request == 'еще':
+                                while detail_searching_not_exists() is False:
+                                    pass
+                            else:
+                                write_msg(event.user_id, f'Не знаю такой комманды')
             else:
                 write_msg(event.user_id, 'не понял, потоврите запрос.')

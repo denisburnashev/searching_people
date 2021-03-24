@@ -88,7 +88,8 @@ class Bot:
             self.main_info['age_to'] = None
         else:
             your_bdate = info['bdate']
-            your_year = your_bdate[5:]
+            edit_your_bdate = your_bdate.replace('.', ' ')
+            your_year = edit_your_bdate.split()[2]
             today_year = str(date.today())
             today_year = today_year[:4]
             your_age = int(today_year) - int(your_year)

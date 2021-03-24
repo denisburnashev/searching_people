@@ -70,19 +70,7 @@ class Bot:
             main_info['city_id'] = None
         else:
             main_info['city_id'] = info['city']['id']
-
-    def main_info_people_found(self, user_id):
-        time.sleep(1)
-
-        main_info_people_found_url = self.url + 'users.get'
-        main_info_people_found_params = {
-            'users_ids': user_id
-        }
-        res = requests.get(main_info_people_found_url, params={**self.params, **main_info_people_found_params})
-        res = res.json()
-        info = res['response'][0]
-        people_found_info['first_name'] = info['first_name']
-        people_found_info['last_name'] = info['last_name']
+        print(main_info)
 
     def get_user_age(self, user_id):
         time.sleep(1)
@@ -162,6 +150,8 @@ class Bot:
             return False
         else:
             result['user_result'] = user_info[0]['id']
+            people_found_info['first_name'] = user_info[0]['first_name']
+            people_found_info['last_name'] = user_info[0]['last_name']
             return True
 
     def user_search_you_setting(self, city_id, sex, age_from, age_to):
@@ -190,6 +180,8 @@ class Bot:
             return False
         else:
             result['user_result'] = user_info[0]['id']
+            people_found_info['first_name'] = user_info[0]['first_name']
+            people_found_info['last_name'] = user_info[0]['last_name']
             return True
 
     def get_user_photo(self, user_id):
@@ -248,7 +240,7 @@ def checking_exciting_table_bd_user_search(user_id):
     for user_ids in info:
         exists_users.append(user_ids[1])
     if user_id in exists_users:
-        write_msg(searching_params['user_id_answer'], f'Отлично, ты хочешь найти новых знакомых для себя,'
+        write_msg(searching_params['user_id_answer'], f'Отлично, '
                                                       f'я могу предложить два варианта поиска:\n'
                                                       f'если интересует быстрый поиск просто введи '
                                                       f'- быстрый поиск '
@@ -258,7 +250,7 @@ def checking_exciting_table_bd_user_search(user_id):
                                                       f'и в ответ я пришлю тебе ссылку на аккаунт '
                                                       f'и топ 3 фото профиля')
     else:
-        write_msg(searching_params['user_id_answer'], f'Отлично, ты хочешь найти новых знакомых для себя,'
+        write_msg(searching_params['user_id_answer'], f'Отлично, '
                                                       f'я могу предложить два варианта поиска:\n'
                                                       f'если интересует быстрый поиск просто введи '
                                                       f'- быстрый поиск '
@@ -297,6 +289,7 @@ def fast_searching_not_exists():
         print('продолжаем поиск')
         print('---------------')
     people_ids_not_exist_in_bd = result['user_result']
+    print(people_ids_not_exist_in_bd)
     if people_ids_not_exist_in_bd not in check_list_not_exists:
         if bot_vk.user_closed_open(people_ids_not_exist_in_bd) is False:
             bot_vk.get_user_photo(people_ids_not_exist_in_bd)
@@ -308,9 +301,11 @@ def fast_searching_not_exists():
             write_msg(searching_params['user_id_answer'], f'vk.com/id{people_ids_not_exist_in_bd}, '
                                                           f'к сожелению это закрытый профиль '
                                                           f'и я не могу отправить тебе его или ее фото.')
+        people_found_info['user_id'] = people_ids_not_exist_in_bd
         add_info_in_vk_user_fast_search(people_ids_not_exist_in_bd)
         write_msg(event.user_id, 'Если хочешь просмотреть следующий результат просто введи еще.\n'
-                                 'Если хочешь вернуться к началу просто введи начало')
+                                 'Если хочешь добавить пользователя в избранные введи добавить.\n'
+                                 'Если хочешь вернуться к началу просто введи начало.')
         return True
     else:
         return False
@@ -338,12 +333,20 @@ def detail_searching_not_exists():
             write_msg(searching_params['user_id_answer'], f'vk.com/id{people_ids_not_exist_in_bd}, '
                                                           f'к сожелению это закрытый профиль '
                                                           f'и я не могу отправить тебе его или ее фото.')
+        people_found_info['user_id'] = people_ids_not_exist_in_bd
         add_info_in_vk_user_detail_search(people_ids_not_exist_in_bd)
         write_msg(event.user_id, 'Если хочешь просмотреть следующий результат просто введи еще.\n'
-                                 'Если хочешь вернуться к началу просто введи начало')
+                                 'Если хочешь добавить пользователя в избранные введи добавить.\n'
+                                 'Если хочешь вернуться к началу просто введи начало.')
         return True
     else:
         return False
+
+
+def add_info_to_favorite(user_id):
+
+    connection.execute(
+        f"""INSERT INTO favorites (user_id_added, user_search_id) VALUES ('{user_id}', '{searching_params['user_id']}');""")
 
 
 def checking_exciting_in_table_vk_user_fast_search(user_id):
@@ -370,14 +373,12 @@ def checking_exciting_in_table_vk_user_detail_search(user_id):
 
 def add_info_in_vk_user_fast_search(user_id):
 
-    bot_vk.main_info_people_found(user_id)
     connection.execute(
         f"""INSERT INTO vk_user_fast_search (user_first_name, user_second_name, user_id, user_url, user_search_id) VALUES ('{people_found_info['first_name']}', '{people_found_info['last_name']}', '{user_id}', 'https://vk.com/id{user_id}', '{searching_params['user_id']}');""")
 
 
 def add_info_in_vk_user_detail_search(user_id):
 
-    bot_vk.main_info_people_found(user_id)
     connection.execute(
         f"""INSERT INTO vk_user_detail_search (user_first_name, user_second_name, user_id, user_url, user_search_id) VALUES ('{people_found_info['first_name']}', '{people_found_info['last_name']}', '{user_id}', 'https://vk.com/id{user_id}', '{searching_params['user_id']}');""")
 
@@ -435,6 +436,29 @@ def listen_for_age_to():
     return write_msg(event.user_id, f'Олично начинаем поиск.')
 
 
+def favorites_list(user_id):
+
+    favorite_list = []
+    info = connection.execute(f"""SELECT * FROM favorites WHERE user_search_id = {user_id};""").fetchall()
+    for user_ids in info:
+        favorite_list.append(user_ids[1])
+    return favorite_list
+
+
+def listen_for_command():
+    write_msg(event.user_id, f'Если ранее ты уже добавлял людей в список избранных введи '
+                             f'- избранные и я отправлю тебе список избранных.\n'
+                             f'Или просто введи - поиск и приступим к поиску людей.')
+    answer = listen()
+    if answer == 'избранные':
+        your_favorite = favorites_list(searching_params['user_id'])
+        for every_id in your_favorite:
+            write_msg(event.user_id, f'https://vk.com/id{every_id}')
+        return True
+    elif answer == 'поиск':
+        return False
+
+
 vk = vk_api.VkApi(token=group_token)
 longpoll = VkLongPoll(vk)
 
@@ -446,17 +470,27 @@ for event in longpoll.listen():
                 write_msg(event.user_id, f'Привет это бот - vkinder по поиску людей.\n'
                                          f'Для кого ты хочешь найти подходящих людей?\n'
                                          f'если ты хочешь найти для себя просто напиши - для себя,\n '
-                                         f'а если ты хочешь найти для друга введи - для друга')
+                                         f'а если ты хочешь найти для друга введи - для друга\n')
             elif request == 'для себя':
                 searching_params['user_id_answer'] = event.user_id
                 searching_params['user_id'] = event.user_id
-                checking_exciting_table_bd_user_search(searching_params['user_id'])
+                answer = listen_for_command()
+                if answer is True:
+                    write_msg(event.user_id, f'если ты хочешь найти для себя просто напиши - для себя,\n '
+                                             f'а если ты хочешь найти для друга введи - для друга\n')
+                elif answer is False:
+                    checking_exciting_table_bd_user_search(searching_params['user_id'])
             elif request == 'для друга':
                 write_msg(event.user_id, f'Отлично просто напиши мне id его аккаунта.')
                 request = listen()
                 searching_params['user_id_answer'] = event.user_id
                 searching_params['user_id'] = int(request)
-                checking_exciting_table_bd_user_search(searching_params['user_id'])
+                answer = listen_for_command()
+                if answer is True:
+                    write_msg(event.user_id, f'если ты хочешь найти для себя просто напиши - для себя,\n '
+                                             f'а если ты хочешь найти для друга введи - для друга\n')
+                elif answer is False:
+                    checking_exciting_table_bd_user_search(searching_params['user_id'])
             elif request == 'быстрый поиск':
                 bot_vk.user_main_info(searching_params['user_id'])
                 bot_vk.get_user_age(searching_params['user_id'])
@@ -479,6 +513,11 @@ for event in longpoll.listen():
                                 elif request == 'еще':
                                     while fast_searching_not_exists() is False:
                                         pass
+                                elif request == 'добавить':
+                                    add_info_to_favorite(people_found_info['user_id'])
+                                    write_msg(event.user_id,
+                                              'Если хочешь просмотреть следующий результат просто введи еще.\n'
+                                              'Если хочешь вернуться к началу просто введи начало.')
                                 else:
                                     write_msg(event.user_id, f'Не знаю такой комманды')
             elif request == 'детальный поиск':
@@ -508,6 +547,11 @@ for event in longpoll.listen():
                             elif request == 'еще':
                                 while detail_searching_not_exists() is False:
                                     pass
+                            elif request == 'добавить':
+                                add_info_to_favorite(people_found_info['user_id'])
+                                write_msg(event.user_id,
+                                          'Если хочешь просмотреть следующий результат просто введи еще.\n'
+                                          'Если хочешь вернуться к началу просто введи начало.')
                             else:
                                 write_msg(event.user_id, f'Не знаю такой комманды')
             else:

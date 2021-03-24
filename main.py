@@ -225,11 +225,13 @@ bot_vk = Bot(vk_token, '5.126')
 
 
 def write_msg(user_id, message):
+    time.sleep(1)
 
     vk_bot_token().method('messages.send', {'user_id': user_id, 'message': message, 'random_id': randrange(10 ** 7)})
 
 
 def write_msg_attach(user_id, message):
+    time.sleep(1)
 
     vk_bot_token().method('messages.send', {'user_id': user_id, 'attachment': message, 'random_id': randrange(10 ** 7)})
 
